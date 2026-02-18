@@ -1,9 +1,17 @@
+
 <!DOCTYPE html>
 <html>
-<head>
-    <title>TrendFit</title>
-</head>
+<head><title>Looksy Task App</title></head>
 <body>
-    <h1>TrendFit App is Running!</h1>
+    <h1>Task List</h1>
+    <form action="/add" method="POST">
+        <input type="text" name="content" placeholder="New Task...">
+        <button type="submit">Add Task</button>
+    </form>
+    <ul>
+        {% for task in tasks %}
+            <li>{{ task.content }}</li>
+        {% endfor %}
+    </ul>
 </body>
 </html>
