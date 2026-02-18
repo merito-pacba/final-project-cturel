@@ -1,38 +1,42 @@
-import os
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
-from dotenv import load_dotenv
-
-load_dotenv()
+import os
 
 app = Flask(__name__)
 
-# Hard Requirement: Veritabanı konfigürasyonu ortam değişkeninden alınmalı
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+# Azure Environment Variable'dan URL'i al
+database_url = os.getenv('DATABASE_URL')
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
 class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    content = db.Column(db.String(200), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
 
 with app.app_context():
     db.create_all()
 
 @app.route('/')
 def index():
-    tasks = Task.query.all()
-    return render_template('index.html', tasks=tasks)
+    # Templates içinde 'outfits' ismini kullandığımız için burayı güncelledik
+    all_outfits = Task.query.all()
+    return render_template('index.html', outfits=all_outfits)
 
-@app.route('/add', methods=['POST'])
-def add_task():
-    content = request.form.get('content')
-    if content:
-        new_task = Task(content=content)
-        db.session.add(new_task)
-        db.session.commit()
-    return redirect(url_for('index'))
+@app.route('/add', methods=['GET', 'POST'])
+def add():
+    if request.method == 'POST':
+        outfit_name = request.form.get('content')
+        if outfit_name:
+            new_outfit = Task(name=outfit_name)
+            db.session.add(new_outfit)
+            db.session.commit()
+            return redirect(url_for('index'))
+    return render_template('add.html')
 
 if __name__ == '__main__':
-   
+    app.run()
