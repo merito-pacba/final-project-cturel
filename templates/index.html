@@ -1,17 +1,38 @@
 
-<!DOCTYPE html>
-<html>
-<head><title>Looksy Task App</title></head>
-<body>
-    <h1>Task List</h1>
-    <form action="/add" method="POST">
-        <input type="text" name="content" placeholder="New Task...">
-        <button type="submit">Add Task</button>
-    </form>
-    <ul>
-        {% for task in tasks %}
-            <li>{{ task.content }}</li>
+cat <<EOF > templates/index.html
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-12 text-center py-5">
+        <h2 class="fw-light">Welcome to your digital closet!</h2>
+        <p class="text-muted">Manage your outfits and styles in one place.</p>
+    </div>
+    
+    {% if outfits %}
+        {% for outfit in outfits %}
+        <div class="col-md-4">
+            <div class="card p-3 shadow-sm border-0" style="border-radius: 15px;">
+                <div class="card-body text-center">
+                    <div class="mb-3" style="font-size: 2rem;">👗</div>
+                    <h5 class="card-title fw-bold text-uppercase" style="letter-spacing: 1px;">{{ outfit.name }}</h5>
+                    <p class="card-text text-muted small">Outfit ID: #{{ outfit.id }}</p>
+                    <hr class="my-3 opacity-25">
+                    <div class="d-flex justify-content-center">
+                        <span class="badge rounded-pill bg-light text-primary px-3 py-2">In Closet</span>
+                    </div>
+                </div>
+            </div>
+        </div>
         {% endfor %}
-    </ul>
-</body>
-</html>
+    {% else %}
+        <div class="col-12 text-center">
+            <div class="alert alert-light border-dashed py-5" style="border: 2px dashed #dee2e6; border-radius: 15px;">
+                <p class="mb-0 text-muted">No outfits yet. Your closet is empty!</p>
+                <a href="/add" class="btn btn-link text-primary mt-2">Create your first one!</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+EOF
