@@ -37,3 +37,19 @@ def add_task():
     db.session.add(new_task)
     db.session.commit()
     return redirect(url_for('index'))
+
+# Task Silme (Delete)
+@app.route('/delete/<int:id>')
+def delete_task(id):
+    task_to_delete = Task.query.get_or_get_404(id)
+    db.session.delete(task_to_delete)
+    db.session.commit()
+    return redirect(url_for('index'))
+
+# Task Güncelleme (Update - Basit haliyle)
+@app.route('/update/<int:id>')
+def update_task(id):
+    task = Task.query.get_or_404(id)
+    task.content = task.content + " (Done)"
+    db.session.commit()
+    return redirect(url_for('index'))
