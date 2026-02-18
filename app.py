@@ -28,3 +28,12 @@ if __name__ == '__main__':
 
 with app.app_context():
     db.create_all()
+
+
+@app.route('/add', methods=['POST'])
+def add_task():
+    content = request.form.get('content')
+    new_task = Task(content=content)
+    db.session.add(new_task)
+    db.session.commit()
+    return redirect(url_for('index'))
