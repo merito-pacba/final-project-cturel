@@ -45,10 +45,6 @@ class Outfit(db.Model):
 
 CATEGORIES = {"casual", "office", "evening", "streetwear", "sport"}
 
-with app.app_context():
-    db.create_all()
-
-
 @app.get("/health")
 def health():
     try:
@@ -161,5 +157,12 @@ def delete_outfit(outfit_id: int):
     db.session.commit()
     return redirect(url_for("index"))
 
-if __name__ == '__main__':
-    app.run()
+
+with app.app_context():
+    try:
+        db.create_all()
+    except SQLAlchemyError:
+        pass
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000, debug=os.getenv("FLASK_DEBUG", "0") == "1")
