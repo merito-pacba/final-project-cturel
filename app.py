@@ -57,11 +57,26 @@ def health():
     except SQLAlchemyError:
         return {"status": "degraded", "database": "unreachable"}, 503
 
-@app.route('/')
+@app.post("/init-db")
+def init_db():
+    try:
+        db.create_all()
+        return {"status": "ok", "message": "Database tables created."}, 200
+    except SQLAlchemyError as exc:
+        return {"status": "error", "message": str(exc)}, 500
+
+
+@app.get("/")
 def index():
-    # Templates içinde 'outfits' ismini kullandığımız için burayı güncelledik
-    all_outfits = Task.query.all()
-    return render_template('index.html', outfits=all_outfits)
+    try:
+        outfits = Outfit.query.order_by(Outfit.created_at.desc()).all()
+        return render_template("index.html", outfits=outfits, db_error=None)
+    except SQLAlchemyError:
+        return render_template(
+            "index.html",
+            outfits=[],
+            db_error="Database is unreachable. Check DATABASE_URL and network/firewall settings.",
+        )
 
 @app.route('/add', methods=['GET', 'POST'])
 def add():
