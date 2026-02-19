@@ -30,9 +30,20 @@ if os.getenv("WEBSITE_HOSTNAME"):
 
 db = SQLAlchemy(app)
 
-class Task(db.Model):
+class Outfit(db.Model):
+    __tablename__ = "outfits"
+
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    category = db.Column(db.String(100), nullable=False, default="casual")
+    image_url = db.Column(db.String(1024), nullable=True)
+    product_link = db.Column(db.String(1024), nullable=True)
+    source_store = db.Column(db.String(100), nullable=False, default="Trendyol")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+CATEGORIES = {"casual", "office", "evening", "streetwear", "sport"}
 
 with app.app_context():
     db.create_all()
