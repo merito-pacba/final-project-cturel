@@ -3,57 +3,44 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fashion Studio</title>
+  <title>{% if outfit %}Edit Outfit{% else %}Add Outfit{% endif %}</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <main class="container">
-    <header class="top-row">
-      <div>
-        <h1>Fashion Studio</h1>
-        <p class="subtitle">Create outfits and publish product links like a fashion catalog.</p>
-      </div>
-      <a class="btn" href="/outfits/new">+ Add Outfit</a>
-    </header>
+  <main class="container form-container">
+    <h1>{% if outfit %}Edit Outfit{% else %}Add New Outfit{% endif %}</h1>
 
-    {% if db_error %}
-      <p class="alert">{{ db_error }}</p>
-    {% endif %}
+    <form method="post" action="{{ form_action }}" class="form-grid" enctype="multipart/form-data">
+      <label for="name">Outfit Name</label>
+      <input id="name" name="name" type="text" required value="{{ outfit.name if outfit else '' }}" />
 
-    {% if outfits %}
-      <section class="grid">
-        {% for outfit in outfits %}
-          <article class="card">
-            {% if outfit.image_url %}
-              <img src="{{ outfit.image_url }}" alt="{{ outfit.name }}" class="product-image" />
-            {% else %}
-              <div class="placeholder">No Image</div>
-            {% endif %}
-
-            <div class="card-content">
-              <h3>{{ outfit.name }}</h3>
-              <p class="meta">{{ outfit.category }} · {{ outfit.source_store }}</p>
-
-              {% if outfit.description %}
-                <p>{{ outfit.description }}</p>
-              {% endif %}
-
-              <div class="actions">
-                {% if outfit.product_link %}
-                  <a class="btn secondary" href="{{ outfit.product_link }}" target="_blank" rel="noopener">Open Product</a>
-                {% endif %}
-                <a class="btn secondary" href="/outfits/{{ outfit.id }}/edit">Edit</a>
-                <form method="post" action="/outfits/{{ outfit.id }}/delete">
-                  <button class="btn danger" type="submit">Delete</button>
-                </form>
-              </div>
-            </div>
-          </article>
+      <label for="category">Category</label>
+      <select id="category" name="category">
+        {% for category in categories %}
+          <option value="{{ category }}" {% if outfit and outfit.category == category %}selected{% endif %}>{{ category }}</option>
         {% endfor %}
-      </section>
-    {% else %}
-      <p class="empty">No outfits yet. Add your first outfit now.</p>
-    {% endif %}
+      </select>
+
+      <label for="source_store">Store Name</label>
+      <input id="source_store" name="source_store" type="text" value="{{ outfit.source_store if outfit else 'Trendyol' }}" />
+
+      <label for="image_url">Image URL</label>
+      <input id="image_url" name="image_url" type="url" placeholder="https://..." value="{{ outfit.image_url if outfit and outfit.image_url else '' }}" />
+
+      <label for="image">Or Upload Image</label>
+      <input id="image" name="image" type="file" accept="image/*" />
+
+      <label for="product_link">Product Link</label>
+      <input id="product_link" name="product_link" type="url" placeholder="https://..." value="{{ outfit.product_link if outfit and outfit.product_link else '' }}" />
+
+      <label for="description">Description</label>
+      <textarea id="description" name="description" rows="5">{{ outfit.description if outfit and outfit.description else '' }}</textarea>
+
+      <div class="form-actions">
+        <button class="btn" type="submit">{{ submit_label }}</button>
+        <a class="btn secondary" href="/">Cancel</a>
+      </div>
+    </form>
   </main>
 </body>
 </html>
