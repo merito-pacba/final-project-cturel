@@ -1,5 +1,6 @@
-flasflask
-flask-sqlalchemy
-psycopg2-binary
-python-dotenv
-gunicorn
+Flask==3.1.0
+gunicorn==23.0.0
+python-dotenv==1.0.1
+Flask-SQLAlchemy==3.1.1
+psycopg[binary]==3.2.6
+azure-storage-blob==12.26.0
