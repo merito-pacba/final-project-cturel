@@ -15,13 +15,18 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-change-me")
 
-# Azure Environment Variable'dan URL'i al
-database_url = os.getenv('DATABASE_URL')
+database_url = os.getenv("DATABASE_URL") or os.getenv("SQLALCHEMY_DATABASE_URI")
 if database_url and database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+    database_url = database_url.replace("postgres://", "postgresql+psycopg://", 1)
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
 
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+if not app.config["SQLALCHEMY_DATABASE_URI"]:
+    raise RuntimeError("DATABASE_URL is required. Set it in .env or App Service configuration.")
+
+if os.getenv("WEBSITE_HOSTNAME"):
+    app.config["PREFERRED_URL_SCHEME"] = "https"
 
 db = SQLAlchemy(app)
 
