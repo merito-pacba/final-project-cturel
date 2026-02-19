@@ -78,16 +78,88 @@ def index():
             db_error="Database is unreachable. Check DATABASE_URL and network/firewall settings.",
         )
 
-@app.route('/add', methods=['GET', 'POST'])
-def add():
-    if request.method == 'POST':
-        outfit_name = request.form.get('content')
-        if outfit_name:
-            new_outfit = Task(name=outfit_name)
-            db.session.add(new_outfit)
-            db.session.commit()
-            return redirect(url_for('index'))
-    return render_template('add.html')
+@app.get("/outfits/new")
+def new_outfit_form():
+    return render_template(
+        "outfit_form.html",
+        outfit=None,
+        categories=sorted(CATEGORIES),
+        form_action=url_for("create_outfit"),
+        submit_label="Add Outfit",
+    )
+
+
+@app.post("/outfits")
+def create_outfit():
+    name = request.form.get("name", "").strip()
+    description = request.form.get("description", "").strip() or None
+    category = request.form.get("category", "casual")
+    image_url = request.form.get("image_url", "").strip() or None
+    product_link = request.form.get("product_link", "").strip() or None
+    source_store = request.form.get("source_store", "Trendyol").strip() or "Trendyol"
+
+    if not name:
+        return "Outfit name is required", 400
+    if category not in CATEGORIES:
+        return "Invalid category", 400
+
+    outfit = Outfit(
+        name=name,
+        description=description,
+        category=category,
+        image_url=image_url,
+        product_link=product_link,
+        source_store=source_store,
+    )
+    db.session.add(outfit)
+    db.session.commit()
+    return redirect(url_for("index"))
+
+
+@app.get("/outfits/<int:outfit_id>/edit")
+def edit_outfit_form(outfit_id: int):
+    outfit = Outfit.query.get_or_404(outfit_id)
+    return render_template(
+        "outfit_form.html",
+        outfit=outfit,
+        categories=sorted(CATEGORIES),
+        form_action=url_for("update_outfit", outfit_id=outfit.id),
+        submit_label="Update Outfit",
+    )
+
+
+@app.post("/outfits/<int:outfit_id>")
+def update_outfit(outfit_id: int):
+    outfit = Outfit.query.get_or_404(outfit_id)
+    name = request.form.get("name", "").strip()
+    description = request.form.get("description", "").strip() or None
+    category = request.form.get("category", "casual")
+    image_url = request.form.get("image_url", "").strip() or None
+    product_link = request.form.get("product_link", "").strip() or None
+    source_store = request.form.get("source_store", "Trendyol").strip() or "Trendyol"
+
+    if not name:
+        return "Outfit name is required", 400
+    if category not in CATEGORIES:
+        return "Invalid category", 400
+
+    outfit.name = name
+    outfit.description = description
+    outfit.category = category
+    outfit.image_url = image_url
+    outfit.product_link = product_link
+    outfit.source_store = source_store
+
+    db.session.commit()
+    return redirect(url_for("index"))
+
+
+@app.post("/outfits/<int:outfit_id>/delete")
+def delete_outfit(outfit_id: int):
+    outfit = Outfit.query.get_or_404(outfit_id)
+    db.session.delete(outfit)
+    db.session.commit()
+    return redirect(url_for("index"))
 
 if __name__ == '__main__':
     app.run()
