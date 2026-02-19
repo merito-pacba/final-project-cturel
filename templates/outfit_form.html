@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% if outfit %}Edit Outfit{% else %}Add Outfit{% endif %}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="container form-container">
+    <h1>{% if outfit %}Edit Outfit{% else %}Add New Outfit{% endif %}</h1>
+
+    <form method="post" action="{{ form_action }}" class="form-grid">
+      <label for="name">Outfit Name</label>
+      <input id="name" name="name" type="text" required value="{{ outfit.name if outfit else '' }}" />
+
+      <label for="category">Category</label>
+      <select id="category" name="category">
+        {% for category in categories %}
+          <option value="{{ category }}" {% if outfit and outfit.category == category %}selected{% endif %}>{{ category }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="source_store">Store Name</label>
+      <input id="source_store" name="source_store" type="text" value="{{ outfit.source_store if outfit else 'Trendyol' }}" />
+
+      <label for="image_url">Image URL</label>
+      <input id="image_url" name="image_url" type="url" placeholder="https://..." value="{{ outfit.image_url if outfit and outfit.image_url else '' }}" />
+
+      <label for="product_link">Product Link</label>
+      <input id="product_link" name="product_link" type="url" placeholder="https://..." value="{{ outfit.product_link if outfit and outfit.product_link else '' }}" />
+
+      <label for="description">Description</label>
+      <textarea id="description" name="description" rows="5">{{ outfit.description if outfit and outfit.description else '' }}</textarea>
+
+      <div class="form-actions">
+        <button class="btn" type="submit">{{ submit_label }}</button>
+        <a class="btn secondary" href="/">Cancel</a>
+      </div>
+    </form>
+  </main>
+</body>
+</html>
