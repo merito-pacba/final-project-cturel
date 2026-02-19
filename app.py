@@ -48,6 +48,15 @@ CATEGORIES = {"casual", "office", "evening", "streetwear", "sport"}
 with app.app_context():
     db.create_all()
 
+
+@app.get("/health")
+def health():
+    try:
+        db.session.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected"}, 200
+    except SQLAlchemyError:
+        return {"status": "degraded", "database": "unreachable"}, 503
+
 @app.route('/')
 def index():
     # Templates içinde 'outfits' ismini kullandığımız için burayı güncelledik
