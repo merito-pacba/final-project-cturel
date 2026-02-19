@@ -6,8 +6,14 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+if load_dotenv:
+    load_dotenv()
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
+
+app = Flask(__name__, template_folder=TEMPLATE_DIR)
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-change-me")
 
 # Azure Environment Variable'dan URL'i al
 database_url = os.getenv('DATABASE_URL')
