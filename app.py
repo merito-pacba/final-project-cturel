@@ -1,10 +1,13 @@
 import os
 from datetime import datetime, timezone
+from uuid import uuid4
 from dotenv import load_dotenv
 from flask import Flask, redirect, render_template, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from werkzeug.utils import secure_filename
+from azure.storage.blob import BlobServiceClient, ContainerClient, ContentSettings
 
 if load_dotenv:
     load_dotenv()
@@ -44,6 +47,55 @@ class Outfit(db.Model):
 
 
 CATEGORIES = {"casual", "office", "evening", "streetwear", "sport"}
+
+
+def upload_file_to_blob(file_storage):
+    """
+    Uploads a file to Azure Blob Storage using a container-level SAS URL.
+
+    Required env var:
+        AZURE_STORAGE_SAS_URL  — the full container SAS URL from Azure Portal.
+                                 Example:
+                                 https://finalprojectlooksy.blob.core.windows.net/outfit-images
+                                 ?sp=racwdli&st=...&sig=...
+
+    WARNING: The SAS token must NOT include sip= (IP restriction).
+             If sip= is present, uploads will fail with AuthorizationFailure
+             from any real server (App Service, local machine, etc.).
+             Regenerate the SAS token without the 'Allowed IP addresses' field.
+    """
+    if not file_storage or not file_storage.filename:
+        return None
+
+    sas_url = os.getenv("AZURE_STORAGE_SAS_URL", "").strip()
+    if not sas_url:
+        return None
+
+    filename = secure_filename(file_storage.filename)
+    if not filename:
+        return None
+
+    extension = os.path.splitext(filename)[1]
+    blob_name = f"outfits/{uuid4().hex}{extension}"
+    content_type = file_storage.content_type or "application/octet-stream"
+
+    try:
+        container_client = ContainerClient.from_container_url(sas_url)
+        blob_client = container_client.get_blob_client(blob_name)
+        blob_client.upload_blob(
+            file_storage.stream,
+            overwrite=True,
+            content_settings=ContentSettings(content_type=content_type),
+        )
+        # Build the read URL: <container_base_url>/<blob_name>?<sas_token>
+        # sas_url format: https://<account>.blob.core.windows.net/<container>?<sas_token>
+        if "?" in sas_url:
+            container_base, sas_token = sas_url.split("?", 1)
+            return f"{container_base}/{blob_name}?{sas_token}"
+        return f"{sas_url}/{blob_name}"
+    except Exception as exc:
+        app.logger.exception("Blob upload failed: %s", exc)
+        return None
 
 @app.get("/health")
 def health():
@@ -91,6 +143,7 @@ def create_outfit():
     description = request.form.get("description", "").strip() or None
     category = request.form.get("category", "casual")
     image_url = request.form.get("image_url", "").strip() or None
+    uploaded_image = request.files.get("image")
     product_link = request.form.get("product_link", "").strip() or None
     source_store = request.form.get("source_store", "Trendyol").strip() or "Trendyol"
 
@@ -99,11 +152,14 @@ def create_outfit():
     if category not in CATEGORIES:
         return "Invalid category", 400
 
+    uploaded_url = upload_file_to_blob(uploaded_image)
+    final_image_url = uploaded_url or image_url
+
     outfit = Outfit(
         name=name,
         description=description,
         category=category,
-        image_url=image_url,
+        image_url=final_image_url,
         product_link=product_link,
         source_store=source_store,
     )
@@ -131,6 +187,7 @@ def update_outfit(outfit_id: int):
     description = request.form.get("description", "").strip() or None
     category = request.form.get("category", "casual")
     image_url = request.form.get("image_url", "").strip() or None
+    uploaded_image = request.files.get("image")
     product_link = request.form.get("product_link", "").strip() or None
     source_store = request.form.get("source_store", "Trendyol").strip() or "Trendyol"
 
@@ -139,10 +196,13 @@ def update_outfit(outfit_id: int):
     if category not in CATEGORIES:
         return "Invalid category", 400
 
+    uploaded_url = upload_file_to_blob(uploaded_image)
+    final_image_url = uploaded_url or image_url or outfit.image_url
+
     outfit.name = name
     outfit.description = description
     outfit.category = category
-    outfit.image_url = image_url
+    outfit.image_url = final_image_url
     outfit.product_link = product_link
     outfit.source_store = source_store
 
