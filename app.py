@@ -50,20 +50,6 @@ CATEGORIES = {"casual", "office", "evening", "streetwear", "sport"}
 
 
 def upload_file_to_blob(file_storage):
-    """
-    Uploads a file to Azure Blob Storage using a container-level SAS URL.
-
-    Required env var:
-        AZURE_STORAGE_SAS_URL  — the full container SAS URL from Azure Portal.
-                                 Example:
-                                 https://finalprojectlooksy.blob.core.windows.net/outfit-images
-                                 ?sp=racwdli&st=...&sig=...
-
-    WARNING: The SAS token must NOT include sip= (IP restriction).
-             If sip= is present, uploads will fail with AuthorizationFailure
-             from any real server (App Service, local machine, etc.).
-             Regenerate the SAS token without the 'Allowed IP addresses' field.
-    """
     if not file_storage or not file_storage.filename:
         return None
 
@@ -104,6 +90,38 @@ def health():
         return {"status": "ok", "database": "connected"}, 200
     except SQLAlchemyError:
         return {"status": "degraded", "database": "unreachable"}, 503
+
+@app.get("/test-blob")
+def test_blob():
+    """Diagnostic route — visit /test-blob to see exactly why uploads are failing."""
+    import traceback
+    sas_url = os.getenv("AZURE_STORAGE_SAS_URL", "").strip()
+    if not sas_url:
+        return {"status": "error", "reason": "AZURE_STORAGE_SAS_URL env var is not set"}, 500
+
+    has_sip = "sip=" in sas_url
+    try:
+        container_client = ContainerClient.from_container_url(sas_url)
+        # Try uploading a tiny test blob
+        test_blob_name = "outfits/_connection_test.txt"
+        blob_client = container_client.get_blob_client(test_blob_name)
+        blob_client.upload_blob(b"ok", overwrite=True)
+        blob_client.delete_blob()
+        return {
+            "status": "ok",
+            "message": "Upload and delete succeeded. Azure Storage is working.",
+            "sip_restriction_present": has_sip,
+        }, 200
+    except Exception as exc:
+        return {
+            "status": "error",
+            "reason": str(exc),
+            "sip_restriction_present": has_sip,
+            "hint": "If reason contains 'AuthorizationFailure' or 'IP address', regenerate the SAS token without the 'Allowed IP addresses' field.",
+            "trace": traceback.format_exc(),
+        }, 500
+
+
 
 @app.post("/init-db")
 def init_db():
