@@ -1,17 +1,13 @@
 import os
 from datetime import datetime, timezone
 from uuid import uuid4
-
-try:
-    from dotenv import load_dotenv
-except ModuleNotFoundError:
-    load_dotenv = None
+from dotenv import load_dotenv
 from flask import Flask, redirect, render_template, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.utils import secure_filename
-from azure.storage.blob import BlobServiceClient, ContentSettings
+from azure.storage.blob import BlobServiceClient, ContainerClient, ContentSettings
 
 if load_dotenv:
     load_dotenv()
@@ -58,13 +54,8 @@ def upload_file_to_blob(file_storage):
     if not file_storage or not file_storage.filename:
         return None
 
-    if not BlobServiceClient or not ContentSettings:
-        return None
-
-    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-    container_name = os.getenv("AZURE_STORAGE_CONTAINER")
-
-    if not connection_string or not container_name:
+    sas_url = os.getenv("AZURE_STORAGE_SAS_URL", "").strip()
+    if not sas_url:
         return None
 
     filename = secure_filename(file_storage.filename)
@@ -73,27 +64,25 @@ def upload_file_to_blob(file_storage):
 
     extension = os.path.splitext(filename)[1]
     blob_name = f"outfits/{uuid4().hex}{extension}"
-
     content_type = file_storage.content_type or "application/octet-stream"
 
     try:
-        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-        container_client = blob_service_client.get_container_client(container_name)
-        try:
-            container_client.create_container(public_access="blob")
-        except Exception:
-            pass
-
+        container_client = ContainerClient.from_container_url(sas_url)
         blob_client = container_client.get_blob_client(blob_name)
         blob_client.upload_blob(
             file_storage.stream,
             overwrite=True,
             content_settings=ContentSettings(content_type=content_type),
         )
-        return blob_client.url
-    except Exception:
+        # Build the read URL: <container_base_url>/<blob_name>?<sas_token>
+        # sas_url format: https://<account>.blob.core.windows.net/<container>?<sas_token>
+        if "?" in sas_url:
+            container_base, sas_token = sas_url.split("?", 1)
+            return f"{container_base}/{blob_name}?{sas_token}"
+        return f"{sas_url}/{blob_name}"
+    except Exception as exc:
+        app.logger.exception("Blob upload failed: %s", exc)
         return None
-
 
 @app.get("/health")
 def health():
@@ -102,6 +91,37 @@ def health():
         return {"status": "ok", "database": "connected"}, 200
     except SQLAlchemyError:
         return {"status": "degraded", "database": "unreachable"}, 503
+
+@app.get("/test-blob")
+def test_blob():
+    """Diagnostic route — visit /test-blob to see exactly why uploads are failing."""
+    import traceback
+    sas_url = os.getenv("AZURE_STORAGE_SAS_URL", "").strip()
+    if not sas_url:
+        return {"status": "error", "reason": "AZURE_STORAGE_SAS_URL env var is not set"}, 500
+
+    has_sip = "sip=" in sas_url
+    try:
+        container_client = ContainerClient.from_container_url(sas_url)
+        # Try uploading a tiny test blob
+        test_blob_name = "outfits/_connection_test.txt"
+        blob_client = container_client.get_blob_client(test_blob_name)
+        blob_client.upload_blob(b"ok", overwrite=True)
+        blob_client.delete_blob()
+        return {
+            "status": "ok",
+            "message": "Upload and delete succeeded. Azure Storage is working.",
+            "sip_restriction_present": has_sip,
+        }, 200
+    except Exception as exc:
+        return {
+            "status": "error",
+            "reason": str(exc),
+            "sip_restriction_present": has_sip,
+            "hint": "If reason contains 'AuthorizationFailure' or 'IP address', regenerate the SAS token without the 'Allowed IP addresses' field.",
+            "trace": traceback.format_exc(),
+        }, 500
+
 
 
 @app.post("/init-db")

@@ -10,7 +10,7 @@
   <main class="container form-container">
     <h1>{% if outfit %}Edit Outfit{% else %}Add New Outfit{% endif %}</h1>
 
-    <form method="post" action="{{ form_action }}" class="form-grid">
+    <form method="post" action="{{ form_action }}" class="form-grid" enctype="multipart/form-data">
       <label for="name">Outfit Name</label>
       <input id="name" name="name" type="text" required value="{{ outfit.name if outfit else '' }}" />
 
@@ -26,6 +26,9 @@
 
       <label for="image_url">Image URL</label>
       <input id="image_url" name="image_url" type="url" placeholder="https://..." value="{{ outfit.image_url if outfit and outfit.image_url else '' }}" />
+
+      <label for="image">Or Upload Image</label>
+      <input id="image" name="image" type="file" accept="image/*" />
 
       <label for="product_link">Product Link</label>
       <input id="product_link" name="product_link" type="url" placeholder="https://..." value="{{ outfit.product_link if outfit and outfit.product_link else '' }}" />
